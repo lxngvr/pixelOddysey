@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Pixel Oddysey: Simple Arcade Game by GalangDavaa</title>
+    <link rel="icon" type="image/png" href="/img/icon-1.png">
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+
+      :root {
+        --bg-color: #202028;
+        --ui-color: #fff;
+        --accent-color: #ffcc00;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-color);
+        color: var(--ui-color);
+        font-family: "Press Start 2P", monospace;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      #game-container {
+        position: absolute; /* Ubah ke absolute untuk full screen */
+        top: 0;
+        left: 0;
+        width: 100vw; /* Lebar penuh */
+        height: 100vh; /* Tinggi penuh */
+        background: #000;
+        box-shadow: none; /* Hilangkan shadow */
+        border: none; /* Hilangkan border */
+      }
+
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+        width: 100%;
+        height: 100%;
+      }
+
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px; /* Padding sedikit diperbesar */
+        box-sizing: border-box;
+      }
+
+      .hud-top {
+        display: flex;
+        justify-content: space-between;
+        text-shadow: 2px 2px 0 #000;
+        font-size: 16px; /* Font sedikit diperbesar */
+        width: 100%;
+        max-width: 800px; /* Agar tidak terlalu lebar di layar besar */
+        margin: 0 auto;
+      }
+
+      .hud-item {
+        margin: 0 10px;
+      }
+
+      #start-screen,
+      #game-over-screen,
+      #win-screen,
+      #level-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        pointer-events: auto;
+        z-index: 10;
+      }
+
+      #level-screen {
+        background: rgba(0, 0, 0, 1);
+        z-index: 20;
+      }
+
+      h1 {
+        color: var(--accent-color);
+        text-shadow: 4px 4px 0 #884400;
+        margin-bottom: 20px;
+        font-size: 32px; /* Judul lebih besar */
+        line-height: 1.5;
+      }
+
+      h2 {
+        color: #fff;
+        margin-bottom: 10px;
+      }
+
+      p {
+        font-size: 12px;
+        color: #ccc;
+        line-height: 1.6;
+        margin-bottom: 30px;
+        max-width: 600px;
+      }
+
+      button.btn-start {
+        background: var(--accent-color);
+        border: none;
+        padding: 20px 40px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 14px;
+        color: #000;
+        cursor: pointer;
+        box-shadow: 0 4px 0 #b38f00;
+        transition: transform 0.1s;
+      }
+
+      button.btn-start:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 #b38f00;
+      }
+
+      #mobile-controls {
+        display: none;
+        position: absolute;
+        bottom: 30px;
+        width: 100%;
+        pointer-events: auto;
+        justify-content: space-between;
+        padding: 0 30px;
+        box-sizing: border-box;
+      }
+
+      .d-pad,
+      .action-btn {
+        display: flex;
+        gap: 20px;
+      }
+
+      .touch-btn {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        font-size: 28px;
+        color: white;
+        user-select: none;
+      }
+
+      .touch-btn:active {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      @media (max-width: 768px) {
+        #mobile-controls {
+          display: flex;
+        }
+        h1 {
+          font-size: 20px;
+        }
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .copyright {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        padding: 20px;
+        background: transparent;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="game-container">
+      <!-- Hapus atribut width/height statis agar dihandle JS -->
+      <canvas id="gameCanvas"></canvas>
+
+      <div id="ui-layer">
+        <div class="hud-top">
+          <div class="hud-item" id="score-display">SKOR: 0000</div>
+          <div class="hud-item" id="level-display">LEVEL: 1</div>
+          <div class="hud-item" id="lives-display">NYAWA: 3</div>
+        </div>
+
+        <div id="mobile-controls">
+          <div class="d-pad">
+            <div class="touch-btn" id="btn-left">←</div>
+            <div class="touch-btn" id="btn-right">→</div>
+          </div>
+          <div class="action-btn">
+            <div class="touch-btn" id="btn-jump">A</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="start-screen">
+        <h1>PIXEL<br />ODDYSEY</h1>
+        <p>
+          Jelajahi 3 Level Berbahaya!<br /><br />Gunakan PANAH/WASD untuk
+          gerak.<br />SPASI/W untuk lompat.<br />Injak musuh untuk menang.
+        </p>
+        <button class="btn-start" onclick="startGame()">
+          MULAI PETUALANGAN
+        </button>
+        <h6 class="copyright">&copy; 2026 GalangDavaa. All rights reserved.</h6>
+      </div>
+
+      <div id="level-screen" class="hidden">
+        <h1 id="level-title">LEVEL 1</h1>
+        <p id="level-desc">Hutan Permulaan</p>
+      </div>
+
+      <div id="game-over-screen" class="hidden">
+        <h1>GAME OVER</h1>
+        <p>Perjalananmu berakhir di sini.</p>
+        <div id="final-score">Skor Akhir: 0</div>
+        <br />
+        <button class="btn-start" onclick="resetGame()">COBA LAGI</button>
+      </div>
+
+      <div id="win-screen" class="hidden">
+        <h1>TAMAT!</h1>
+        <p>
+          Kamu menaklukkan semua level!<br />Kamu adalah Pahlawan Legendaris.
+        </p>
+        <div id="win-score">Skor Akhir: 0</div>
+        <br />
+        <button class="btn-start" onclick="resetGame()">MAIN LAGI</button>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const TILE_SIZE = 32;
+
+      const keys = { left: false, right: false, up: false };
+
+      // --- GAME CONFIG & STATE ---
+      let gameRunning = false;
+      let score = 0;
+      let lives = 3;
+      let currentLevelIdx = 0;
+      let particles = [];
+      let camera = { x: 0, y: 0 };
+      let currentMap = []; // Array 2D tile saat ini
+
+      // --- FUNGSI RESIZE FULL SCREEN ---
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Redraw saat resize agar tidak blank jika sedang pause
+        if (!gameRunning && currentMap.length > 0) {
+          drawMap(camera.x, camera.y);
+          player.draw(ctx, camera.x, camera.y);
+        }
+      }
+      window.addEventListener("resize", resize);
+      resize(); // Panggil saat awal load
+
+      // --- MAP BLUEPRINTS ---
+      // Legenda Map:
+      // ' ' : Udara (0)
+      // '=' : Rumput (1)
+      // '#' : Tanah (2)
+      // '~' : Lava (3) - Mematikan
+      // 'F' : Bendera (9) - Finish Level
+      // 'E' : Musuh Darat (Slime)
+      // 'B' : Musuh Terbang (Kelelawar)
+      // 'G' : Musuh Hantu (Ghost) - BARU
+
+      const levelBlueprints = [
+        // LEVEL 1: HUTAN DATAR (Ditambah Kelelawar 'B')
+        [
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                    B                                     B                                         ",
+          "                                                                                                    ",
+          "                                                                  ===                               ",
+          "              E              ===         E        ===            ==###==              F             ",
+          "             ===           ==###==      ===     ==###==         =#######=             =             ",
+          "      E     =###=         =#######=    =###=   =#######=       =#########=            =             ",
+          "====================================================================================================",
+          "####################################################################################################",
+          "####################################################################################################",
+        ],
+        // LEVEL 2: GOA LAVA (Revisi: Lebih Mudah Dilompati, Tapi Banyak Musuh)
+        // Celah lava diperpendek, akhir level ada jembatan panjang dengan musuh "Maju Mundur"
+        [
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                B                   ",
+          "        ====                        B       ====                        E      E                    ",
+          "        ####     ====      E       ===      ####     ====      ======================      F       ",
+          "  E     ####     ####     ===      ###      ####     ####      ######################      =       ",
+          " ===    ####     ####     ###      ###      ####     ####      ######################      =       ",
+          "====~~~~====~~~~~====~~~~~===~~~~~~###~~~~~~====~~~~~====~~~~~~######################~~~~~~=~~~~~~",
+          "####~~~~####~~~~~####~~~~~###~~~~~~###~~~~~~####~~~~~####~~~~~~######################~~~~~~=~~~~~~",
+          "####~~~~####~~~~~####~~~~~###~~~~~~###~~~~~~####~~~~~####~~~~~~######################~~~~~~=~~~~~~",
+        ],
+        // LEVEL 3: PULAU LANGIT (Redesign: Floating Islands & Hantu)
+        // G = Hantu (Bergerak Naik Turun)
+        [
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                                                                                    ",
+          "                                      G               G                                             ",
+          "                              G      ===             ===                              F             ",
+          "         ===       ===       ===             ===             ===           G          =             ",
+          "         ===   E   ===            ==  E   =  ===      E      ===  G==      =      =   =             ",
+          "===      ===  ===  ===   B   ===     ===     ===     ===     ===      ===     ===    ===           ",
+          "                         =                                =                                         ",
+          "     ===                                  B               B                                         ",
+          "                                                                                                    ",
+          "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        ],
+      ];
+
+      // --- CLASS ---
+
+      class Particle {
+        constructor(x, y, color, speed) {
+          this.x = x;
+          this.y = y;
+          this.size = Math.random() * 5 + 2;
+          this.color = color;
+          this.vx = (Math.random() - 0.5) * speed;
+          this.vy = (Math.random() - 0.5) * speed;
+          this.life = 1.0;
+        }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.life -= 0.03;
+        }
+        draw(ctx, camX, camY) {
+          ctx.globalAlpha = Math.max(0, this.life);
+          ctx.fillStyle = this.color;
+          ctx.fillRect(this.x - camX, this.y - camY, this.size, this.size);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      class Player {
+        constructor() {
+          this.width = 24;
+          this.height = 24;
+          this.reset();
+        }
+        reset() {
+          this.x = 50;
+          this.y = 100;
+          this.vx = 0;
+          this.vy = 0;
+          this.speed = 4.5;
+          this.jumpForce = -9.8;
+          this.gravity = 0.45;
+          this.grounded = false;
+          this.facingRight = true;
+          this.isDead = false;
+        }
+        update() {
+          if (this.isDead) return;
+
+          // Horizontal
+          if (keys.left) {
+            this.vx = -this.speed;
+            this.facingRight = false;
+          } else if (keys.right) {
+            this.vx = this.speed;
+            this.facingRight = true;
+          } else {
+            this.vx *= 0.8;
+          }
+
+          // Jump
+          if (keys.up && this.grounded) {
+            this.vy = this.jumpForce;
+            this.grounded = false;
+            createParticles(
+              this.x + this.width / 2,
+              this.y + this.height,
+              "#fff",
+              5,
+            );
+          }
+
+          // Physics
+          this.vy += this.gravity;
+          this.x += this.vx;
+          checkCollision(this, "x");
+          this.y += this.vy;
+          checkCollision(this, "y");
+
+          // Fall death
+          // Batas mati disesuaikan karena layar bisa tinggi
+          if (this.y > canvas.height + 200) playerDie();
+          if (this.x < 0) this.x = 0;
+        }
+        draw(ctx, camX, camY) {
+          if (this.isDead) return;
+
+          let drawX = this.x - camX;
+          let drawY = this.y - camY;
+
+          ctx.save();
+
+          // Balik sprite jika hadap kiri
+          if (!this.facingRight) {
+            ctx.translate(drawX + this.width, drawY);
+            ctx.scale(-1, 1);
+            drawX = 0;
+            drawY = 0;
+          } else {
+            ctx.translate(drawX, drawY);
+            drawX = 0;
+            drawY = 0;
+          }
+
+          // --- LOGIKA ANIMASI & PIXEL ART ---
+          // Cek apakah sedang jalan
+          const isMoving = Math.abs(this.vx) > 0.5;
+          // Frame berkedip berdasarkan waktu untuk efek lari
+          const animFrame = Math.floor(Date.now() / 120) % 2;
+
+          // 1. KAKI (Sepatu Coklat)
+          ctx.fillStyle = "#5d4037"; // Coklat Tua
+          if (this.grounded) {
+            if (isMoving && animFrame === 0) {
+              // Kaki kiri maju, kanan mundur
+              ctx.fillRect(drawX + 4, drawY + 20, 6, 4);
+              ctx.fillRect(drawX + 16, drawY + 20, 6, 4);
+            } else if (isMoving && animFrame === 1) {
+              // Kaki kiri mundur, kanan maju (rapat)
+              ctx.fillRect(drawX + 8, drawY + 20, 6, 4);
+              ctx.fillRect(drawX + 12, drawY + 20, 6, 4);
+            } else {
+              // Idle
+              ctx.fillRect(drawX + 4, drawY + 20, 6, 4);
+              ctx.fillRect(drawX + 14, drawY + 20, 6, 4);
+            }
+          } else {
+            // Lompat (kaki ditekuk)
+            ctx.fillRect(drawX + 2, drawY + 18, 6, 6);
+            ctx.fillRect(drawX + 14, drawY + 16, 6, 6);
+          }
+
+          // 2. BADAN (Overall Biru)
+          ctx.fillStyle = "#2980b9"; // Biru Jeans
+          ctx.fillRect(drawX + 6, drawY + 14, 12, 6); // Pinggang
+
+          // Celana
+          if (isMoving && animFrame === 0) {
+            ctx.fillRect(drawX + 5, drawY + 18, 5, 2);
+            ctx.fillRect(drawX + 15, drawY + 18, 5, 2);
+          } else {
+            ctx.fillRect(drawX + 5, drawY + 18, 5, 2);
+            ctx.fillRect(drawX + 14, drawY + 18, 5, 2);
+          }
+
+          // 3. BAJU DALAM (Merah)
+          ctx.fillStyle = "#e74c3c"; // Merah
+          ctx.fillRect(drawX + 4, drawY + 10, 16, 6); // Badan atas
+          ctx.fillRect(drawX + 2, drawY + 10, 4, 8); // Lengan kiri
+          ctx.fillRect(drawX + 18, drawY + 10, 4, 8); // Lengan kanan
+
+          // 4. TALI OVERALL & KANCING
+          ctx.fillStyle = "#2980b9"; // Tali Biru
+          ctx.fillRect(drawX + 6, drawY + 10, 4, 4);
+          ctx.fillRect(drawX + 14, drawY + 10, 4, 4);
+
+          ctx.fillStyle = "#f1c40f"; // Kancing Kuning
+          ctx.fillRect(drawX + 7, drawY + 13, 2, 2);
+          ctx.fillRect(drawX + 15, drawY + 13, 2, 2);
+
+          // 5. KEPALA (Warna Kulit)
+          ctx.fillStyle = "#ffcc99"; // Skin tone
+          ctx.fillRect(drawX + 4, drawY + 2, 16, 10);
+
+          // 6. RAMBUT (Coklat)
+          ctx.fillStyle = "#4e342e";
+          ctx.fillRect(drawX + 4, drawY + 2, 4, 8); // Cambang belakang
+          ctx.fillRect(drawX + 4, drawY + 2, 16, 3); // Rambut atas (tertutup topi)
+
+          // 7. TOPI (Merah)
+          ctx.fillStyle = "#c0392b"; // Merah Tua
+          ctx.fillRect(drawX + 2, drawY, 20, 4); // Visor/Brim
+          ctx.fillRect(drawX + 4, drawY - 2, 16, 4); // Topi atas
+
+          // 8. MATA & KUMIS (Pixel detail)
+          ctx.fillStyle = "#000"; // Mata Hitam
+          ctx.fillRect(drawX + 15, drawY + 5, 2, 4);
+
+          // Hidung
+          ctx.fillStyle = "#e6a175";
+          ctx.fillRect(drawX + 17, drawY + 7, 3, 2);
+
+          // Kumis (Opsional, gaya Mario)
+          ctx.fillStyle = "#4e342e";
+          ctx.fillRect(drawX + 14, drawY + 9, 6, 2);
+
+          ctx.restore();
+        }
+      }
+
+      class Enemy {
+        constructor(x, y, range, type = "ground") {
+          this.x = x;
+          this.y = y;
+          this.startX = x;
+          this.startY = y; // Untuk Hantu
+          this.range = range || 100;
+          this.width = 28;
+          this.height = 20;
+          this.type = type; // 'ground', 'fly', 'ghost'
+
+          this.vx = type === "ghost" ? 0 : 1.5;
+          this.vy = type === "ghost" ? 1.5 : 0; // Hantu mulai dengan gerak vertikal
+          this.gravity = type === "fly" || type === "ghost" ? 0 : 0.4;
+
+          this.active = true;
+          // Warna berdasarkan tipe
+          if (type === "fly") this.color = "#9b59b6";
+          else if (type === "ghost")
+            this.color = "#bdc3c7"; // Putih Hantu
+          else this.color = "#e74c3c";
+        }
+        update() {
+          if (!this.active) return;
+
+          if (this.type === "ghost") {
+            // --- LOGIKA HANTU (Vertikal) ---
+            this.y += this.vy;
+            if (this.y > this.startY + 40) this.vy = -1.5; // Batas bawah
+            if (this.y < this.startY - 40) this.vy = 1.5; // Batas atas
+
+            // Sedikit bergoyang kiri kanan biar seram
+            this.x = this.startX + Math.sin(Date.now() / 200) * 5;
+          } else {
+            // --- LOGIKA DARAT & TERBANG (Horizontal) ---
+            // Patrol Movement
+            if (this.x > this.startX + this.range) this.vx = -1.5;
+            if (this.x < this.startX) this.vx = 1.5;
+
+            this.x += this.vx;
+
+            if (this.type === "ground") {
+              this.vy += this.gravity;
+              this.y += this.vy;
+
+              // Tabrakan lantai
+              let tileX = Math.floor((this.x + this.width / 2) / TILE_SIZE);
+              let tileY = Math.floor((this.y + this.height) / TILE_SIZE);
+              if (
+                currentMap[tileY] &&
+                (currentMap[tileY][tileX] === 1 ||
+                  currentMap[tileY][tileX] === 2)
+              ) {
+                this.y = tileY * TILE_SIZE - this.height;
+                this.vy = 0;
+              }
+            } else if (this.type === "fly") {
+              // Sedikit naik turun (sine wave)
+              this.y = this.y + Math.sin(Date.now() / 200) * 0.5;
+            }
+          }
+        }
+        draw(ctx, camX, camY) {
+          if (!this.active) return;
+
+          let ex = this.x - camX;
+          let ey = this.y - camY;
+
+          ctx.fillStyle = this.color;
+
+          if (this.type === "fly") {
+            // --- KELELAWAR ---
+            ctx.fillRect(ex + 8, ey + 4, 12, 12);
+            let wingY = Math.sin(Date.now() / 100) * 5;
+            ctx.beginPath();
+            ctx.moveTo(ex + 8, ey + 8);
+            ctx.lineTo(ex - 4, ey - 2 + wingY);
+            ctx.lineTo(ex + 8, ey + 14);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(ex + 20, ey + 8);
+            ctx.lineTo(ex + 32, ey - 2 + wingY);
+            ctx.lineTo(ex + 20, ey + 14);
+            ctx.fill();
+            ctx.fillStyle = "red";
+            ctx.fillRect(ex + 10, ey + 8, 3, 3);
+            ctx.fillRect(ex + 15, ey + 8, 3, 3);
+          } else if (this.type === "ghost") {
+            // --- HANTU (GHOST) ---
+            ctx.fillStyle = "rgba(236, 240, 241, 0.8)"; // Putih transparan
+
+            // Kepala bulat
+            ctx.beginPath();
+            ctx.arc(ex + 14, ey + 10, 10, Math.PI, 0);
+            ctx.lineTo(ex + 24, ey + 20);
+
+            // Bawah bergerigi
+            for (let i = 0; i < 3; i++) {
+              ctx.lineTo(ex + 18 - i * 6, ey + 16);
+              ctx.lineTo(ex + 14 - i * 6, ey + 20);
+            }
+            ctx.lineTo(ex + 4, ey + 10);
+            ctx.fill();
+
+            // Mata Hitam
+            ctx.fillStyle = "#000";
+            ctx.fillRect(ex + 10, ey + 8, 3, 3);
+            ctx.fillRect(ex + 16, ey + 8, 3, 3);
+          } else {
+            // --- SLIME/JAMUR ---
+            ctx.beginPath();
+            ctx.roundRect(ex, ey, this.width, this.height, 5);
+            ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.4)";
+            ctx.fillRect(ex + 4, ey + 4, 6, 6);
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(ex + 6, ey + 8, 5, 5);
+            ctx.fillRect(ex + 18, ey + 8, 5, 5);
+            ctx.fillStyle = "#000";
+            let lookDir = this.vx > 0 ? 2 : 0;
+            ctx.fillRect(ex + 7 + lookDir, ey + 9, 2, 2);
+            ctx.fillRect(ex + 19 + lookDir, ey + 9, 2, 2);
+          }
+        }
+      }
+
+      const player = new Player();
+      let enemies = [];
+
+      // --- SYSTEM: PARSE MAP ---
+      function loadLevel(levelIndex) {
+        currentMap = [];
+        enemies = [];
+
+        const blueprint = levelBlueprints[levelIndex];
+
+        for (let r = 0; r < blueprint.length; r++) {
+          let rowData = [];
+          let rowString = blueprint[r];
+          for (let c = 0; c < rowString.length; c++) {
+            let char = rowString[c];
+            if (char === " ") rowData.push(0);
+            else if (char === "=") rowData.push(1);
+            else if (char === "#") rowData.push(2);
+            else if (char === "~") rowData.push(3);
+            else if (char === "F") rowData.push(9);
+            else if (char === "E") {
+              rowData.push(0);
+              enemies.push(
+                new Enemy(c * TILE_SIZE, r * TILE_SIZE, 80, "ground"),
+              );
+            } else if (char === "B") {
+              rowData.push(0);
+              enemies.push(new Enemy(c * TILE_SIZE, r * TILE_SIZE, 120, "fly"));
+            } else if (char === "G") {
+              // HANTU
+              rowData.push(0);
+              // Range hantu tidak dipakai untuk X, tapi logic vertikal di update()
+              enemies.push(new Enemy(c * TILE_SIZE, r * TILE_SIZE, 0, "ghost"));
+            } else {
+              rowData.push(0);
+            }
+          }
+          currentMap.push(rowData);
+        }
+
+        player.reset();
+        camera.x = 0;
+        // Camera Y dihandle di loop
+
+        // Resize lagi untuk memastikan posisi benar setelah level load
+        resize();
+
+        const levelTitles = ["HUTAN RIMBA", "GOA LAVA", "PULAU LANGIT"];
+        showLevelScreen(levelIndex + 1, levelTitles[levelIndex]);
+      }
+
+      function showLevelScreen(num, title) {
+        const screen = document.getElementById("level-screen");
+        document.getElementById("level-title").innerText = "LEVEL " + num;
+        document.getElementById("level-desc").innerText = title;
+        screen.classList.remove("hidden");
+        gameRunning = false;
+
+        setTimeout(() => {
+          screen.classList.add("hidden");
+          gameRunning = true;
+          requestAnimationFrame(gameLoop);
+        }, 2000);
+      }
+
+      function createParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++)
+          particles.push(new Particle(x, y, color, 4));
+      }
+
+      function checkCollision(obj, axis) {
+        let left = Math.floor(obj.x / TILE_SIZE);
+        let right = Math.floor((obj.x + obj.width - 0.1) / TILE_SIZE);
+        let top = Math.floor(obj.y / TILE_SIZE);
+        let bottom = Math.floor((obj.y + obj.height - 0.1) / TILE_SIZE);
+
+        const isSolid = (val) => [1, 2].includes(val);
+        const isDeadly = (val) => val === 3;
+        const isWin = (val) => val === 9;
+
+        if (axis === "y") {
+          if (obj.vy >= 0) {
+            // Falling
+            if (
+              bottom < currentMap.length &&
+              (isSolid(currentMap[bottom][left]) ||
+                isSolid(currentMap[bottom][right]))
+            ) {
+              obj.y = bottom * TILE_SIZE - obj.height;
+              obj.vy = 0;
+              obj.grounded = true;
+            }
+            if (
+              bottom < currentMap.length &&
+              (isDeadly(currentMap[bottom][left]) ||
+                isDeadly(currentMap[bottom][right]))
+            ) {
+              playerDie();
+            }
+          } else if (obj.vy < 0) {
+            // Jumping
+            if (
+              top >= 0 &&
+              (isSolid(currentMap[top][left]) ||
+                isSolid(currentMap[top][right]))
+            ) {
+              obj.y = (top + 1) * TILE_SIZE;
+              obj.vy = 0;
+            }
+          }
+        }
+        if (axis === "x") {
+          if (obj.vx > 0) {
+            // Right
+            if (
+              right < currentMap[0].length &&
+              (isSolid(currentMap[top][right]) ||
+                isSolid(currentMap[bottom][right]))
+            ) {
+              obj.x = right * TILE_SIZE - obj.width;
+              obj.vx = 0;
+            }
+            if (
+              right < currentMap[0].length &&
+              isWin(currentMap[bottom][right])
+            ) {
+              completeLevel();
+            }
+          } else if (obj.vx < 0) {
+            // Left
+            if (
+              left >= 0 &&
+              (isSolid(currentMap[top][left]) ||
+                isSolid(currentMap[bottom][left]))
+            ) {
+              obj.x = (left + 1) * TILE_SIZE;
+              obj.vx = 0;
+            }
+          }
+        }
+      }
+
+      function playerDie() {
+        if (player.isDead) return;
+        player.isDead = true;
+        lives--;
+        createParticles(player.x, player.y, "#3498db", 20);
+        updateHUD();
+
+        if (lives > 0) {
+          setTimeout(() => {
+            player.reset(); // Restart di level yang sama
+            camera.x = 0; // Reset kamera
+          }, 1000);
+        } else {
+          gameRunning = false;
+          document.getElementById("final-score").innerText =
+            "Skor Akhir: " + score;
+          document
+            .getElementById("game-over-screen")
+            .classList.remove("hidden");
+        }
+      }
+
+      function completeLevel() {
+        if (currentLevelIdx < levelBlueprints.length - 1) {
+          // Next Level
+          currentLevelIdx++;
+          score += 500; // Bonus Level
+          updateHUD();
+          loadLevel(currentLevelIdx);
+        } else {
+          // Game Tamat
+          gameRunning = false;
+          document.getElementById("win-score").innerText =
+            "Skor Akhir: " + (score + lives * 1000);
+          document.getElementById("win-screen").classList.remove("hidden");
+        }
+      }
+
+      function updateHUD() {
+        document.getElementById("score-display").innerText =
+          "SKOR: " + score.toString().padStart(4, "0");
+        document.getElementById("level-display").innerText =
+          "LEVEL: " + (currentLevelIdx + 1);
+        document.getElementById("lives-display").innerText = "NYAWA: " + lives;
+      }
+
+      function drawMap(camX, camY) {
+        // Background Procedural sesuai Level
+        let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        if (currentLevelIdx === 0) {
+          // Biru Cerah
+          gradient.addColorStop(0, "#3498db");
+          gradient.addColorStop(1, "#2ecc71");
+        } else if (currentLevelIdx === 1) {
+          // Merah Goa
+          gradient.addColorStop(0, "#2c3e50");
+          gradient.addColorStop(1, "#c0392b");
+        } else {
+          // Ungu Langit
+          gradient.addColorStop(0, "#8e44ad");
+          gradient.addColorStop(1, "#2980b9");
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Awan parallax
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.beginPath();
+        ctx.arc(100 - camX * 0.1, 50, 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        let startCol = Math.floor(camX / TILE_SIZE);
+        let endCol = startCol + canvas.width / TILE_SIZE + 2;
+
+        for (let y = 0; y < currentMap.length; y++) {
+          for (let x = startCol; x <= endCol; x++) {
+            if (x >= currentMap[y].length) continue;
+            let tile = currentMap[y][x];
+            if (!tile) continue;
+
+            let px = x * TILE_SIZE - camX;
+            let py = y * TILE_SIZE - camY;
+
+            if (tile === 1) {
+              // Rumput
+              ctx.fillStyle = "#27ae60";
+              ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+              ctx.fillStyle = "#2ecc71";
+              ctx.fillRect(px, py, TILE_SIZE, 4);
+            } else if (tile === 2) {
+              // Tanah
+              ctx.fillStyle = "#795548";
+              ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+              ctx.fillStyle = "#5d4037";
+              ctx.fillRect(px + 5, py + 10, 5, 5);
+            } else if (tile === 3) {
+              // Lava
+              ctx.fillStyle = "#e74c3c";
+              ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+              if (Math.random() > 0.9) {
+                ctx.fillStyle = "#f1c40f";
+                ctx.fillRect(
+                  px + Math.random() * 20,
+                  py + Math.random() * 20,
+                  5,
+                  5,
+                );
+              }
+            } else if (tile === 9) {
+              // Flag
+              ctx.fillStyle = "#ecf0f1";
+              ctx.fillRect(px + 10, py, 4, TILE_SIZE);
+              ctx.fillStyle = "#f39c12";
+              ctx.beginPath();
+              ctx.moveTo(px + 14, py);
+              ctx.lineTo(px + 30, py + 8);
+              ctx.lineTo(px + 14, py + 16);
+              ctx.fill();
+            }
+          }
+        }
+      }
+
+      function gameLoop() {
+        if (!gameRunning) return;
+
+        player.update();
+
+        // Kamera Follow Horizontal
+        let targetCamX = player.x - canvas.width / 2 + player.width / 2;
+        if (targetCamX < 0) targetCamX = 0;
+        let maxCamX = currentMap[0].length * TILE_SIZE - canvas.width;
+        if (targetCamX > maxCamX) targetCamX = maxCamX;
+        camera.x += (targetCamX - camera.x) * 0.1;
+
+        // Kamera Vertical Centering (Agar map ada di tengah layar jika layar tinggi)
+        let mapHeight = currentMap.length * TILE_SIZE;
+        let targetCamY = 0;
+        // Jika layar lebih tinggi dari map, posisikan map di tengah (secara visual)
+        // Caranya dengan menggeser camera Y ke negatif
+        if (canvas.height > mapHeight) {
+          targetCamY = -(canvas.height - mapHeight) / 2;
+        }
+        camera.y = targetCamY;
+
+        // Enemies
+        enemies.forEach((enemy) => {
+          enemy.update();
+          if (enemy.active && !player.isDead) {
+            if (
+              player.x < enemy.x + enemy.width &&
+              player.x + player.width > enemy.x &&
+              player.y < enemy.y + enemy.height &&
+              player.y + player.height > enemy.y
+            ) {
+              if (
+                player.vy > 0 &&
+                player.y + player.height - player.vy <=
+                  enemy.y + enemy.height / 2
+              ) {
+                enemy.active = false;
+                player.vy = -6;
+                score += 100;
+                createParticles(enemy.x, enemy.y, enemy.color, 10);
+                updateHUD();
+              } else {
+                playerDie();
+              }
+            }
+          }
+        });
+
+        particles.forEach((p, i) => {
+          p.update();
+          if (p.life <= 0) particles.splice(i, 1);
+        });
+
+        // Draw
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMap(camera.x, camera.y);
+        enemies.forEach((e) => e.draw(ctx, camera.x, camera.y));
+        player.draw(ctx, camera.x, camera.y);
+        particles.forEach((p) => p.draw(ctx, camera.x, camera.y));
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      // --- INPUT & START ---
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
+        if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
+        if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW")
+          keys.up = true;
+      });
+      window.addEventListener("keyup", (e) => {
+        if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
+        if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
+        if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW")
+          keys.up = false;
+      });
+
+      // Touch
+      const bindTouch = (id, k) => {
+        const el = document.getElementById(id);
+        el.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          keys[k] = true;
+        });
+        el.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          keys[k] = false;
+        });
+      };
+      bindTouch("btn-left", "left");
+      bindTouch("btn-right", "right");
+      bindTouch("btn-jump", "up");
+
+      function startGame() {
+        document.getElementById("start-screen").classList.add("hidden");
+        resetGame();
+      }
+
+      function resetGame() {
+        score = 0;
+        lives = 3;
+        currentLevelIdx = 0;
+        particles = [];
+
+        document.getElementById("game-over-screen").classList.add("hidden");
+        document.getElementById("win-screen").classList.add("hidden");
+        updateHUD();
+
+        loadLevel(currentLevelIdx);
+      }
+    </script>
+  </body>
+</html>
